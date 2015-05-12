@@ -3,5 +3,6 @@ name = "PullAllStashRepos"
 version = "0.1.0"
 authors = ["Josh Bennett <jobennett@pointroll.com>"]
 [dependencies]
+hyper = "*"
 docopt = "*"
 rustc-serialize = "*"
