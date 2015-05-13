@@ -79,10 +79,10 @@ fn main() {
     let outputDirectory = args.arg_outdir;
 
     //Authorization
-    let authHeader = Authorization::<Basic> { // TODO figure out how to make this work.
+    let authHeader: Authorization<Basic> = Authorization(Basic{
         username: userName,
-        password: password
-    };
+        password: Some(password)
+    }) ;
 
     headers.set(authHeader);
 
@@ -104,5 +104,5 @@ fn main() {
 }
 
 fn promptForPassword() -> String {
-
+    "this should return the password the user entered".to_string()
 }
