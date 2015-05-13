@@ -7,45 +7,45 @@ use hyper::Client;
 use hyper::client::Request;
 use hyper::Url;
 use hyper::header::{Headers, HeaderFormat, Header, Basic, Authorization};
+use rustc_serialize::Decodable;
 use rustc_serialize::json;
-use rustc_serialize::base64::{ToBase64, MIME};
+use rustc_serialize::json::{DecodeResult};
 use std::io::Read;
 
-
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(RustcDecodable, Debug)]
 pub struct HrefStruct{
-    data_href: String
+    href: String
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+/*#[derive(RustcDecodable, Debug)]
 pub struct LinksStruct{
-    data_self: Vec<HrefStruct>
-}
+    self: Vec<HrefStruct>
+}*/
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(RustcDecodable, Debug)]
 pub struct LinkStruct{
-    data_url: String,
-    dataRel: String
+    url: String,
+    rel: String
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(RustcDecodable, Debug)]
 pub struct ProjectInfoStruct  {
-    data_key: String,
-    data_id: u32,
-    data_name: String,
-    data_description: String,
-    data_public: bool,
-    data_type: String,
-    data_link: LinkStruct,
-    data_links: LinksStruct
+    key: String,
+    id: u32,
+    name: String,
+    //description: String,
+    public: bool,
+    //type: String,
+    link: LinkStruct,
+    //links: LinksStruct
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(RustcDecodable, Debug)]
 pub struct ProjectsStruct  {
-    data_size: u8,
-    data_limit: u8,
-    data_vector: bool,
-    data_values: Vec<ProjectInfoStruct>
+    //size: u8,
+    //limit: u8,
+    isLastPage: bool,
+    values: Vec<ProjectInfoStruct>
 }
 
 #[derive(RustcDecodable, Debug)]
@@ -57,7 +57,7 @@ struct Args {
     flag_verbos: bool
 }
 static USAGE: &'static str = "
-Usage: PullAllStashRepos [Options] <url> <outdir> <username> [<password>]
+Usage: PullAllStashRepos [Options] <url> <outdir> <username> <password>
 
 Options:
     -v, --verbos  show everything.
@@ -71,25 +71,47 @@ fn main() {
 
     println!("{:?}", args);
 
+    let userName: String = args.arg_username;
+    let password: String = args.arg_password;
+    let outputDirectory: String = args.arg_outdir;
+
+    let baseUrl = args.arg_url.to_string() + "/rest/api/1.0";
+
+    let projectsUrl =  baseUrl.clone().to_string() + "/projects/";
+    let urlProj = Url::parse(&projectsUrl).unwrap();
+
+    let decodedProjects: DecodeResult<ProjectsStruct> = get_json_from_api(urlProj.clone(), userName.clone(), password.clone());
+
+    //TODO loop through projects, get repo, clone repo to outDir
+    for proj in decodedProjects.unwrap().values.iter() {
+
+        let projUrl = baseUrl.clone() + &proj.clone().link.url;
+        let url = Url::parse(&projUrl).unwrap();
+
+        let decodedProj: DecodeResult<ProjectsStruct> = get_json_from_api(url, userName.clone(), password.clone());
+
+        //TOOD output raw text? println!("{:?}", &decodedProj);
+
+        println!("{:?}", &decodedProj);
+    }
+
+    //println!("{:?}", &bodyText);
+    //println!("{:?}", &decodedProjects);
+}
+
+fn get_json_from_api<T: Decodable>(url: Url, userName: String, password: String) -> DecodeResult<T> {
+
     let mut client = Client::new();
     let mut headers = Headers::new();
-
-    let userName = args.arg_username;
-    let password = args.arg_password;
-    let outputDirectory = args.arg_outdir;
 
     //Authorization
     let authHeader: Authorization<Basic> = Authorization(Basic{
         username: userName,
         password: Some(password)
-    }) ;
+    });
 
     headers.set(authHeader);
 
-    let mut projectsUrl = args.arg_url.to_string() + "/rest/api/1.0/projects/";
-    let url = Url::parse(&projectsUrl).unwrap();
-
-    // TODO use basic auth
     let mut res = client
         .get(url)
         .headers(headers)
@@ -100,9 +122,10 @@ fn main() {
 
     &res.read_to_string(&mut bodyText);
 
-    println!("{:?}", bodyText);
-}
+    //println!("{:?}", &bodyText);
 
-fn promptForPassword() -> String {
-    "this should return the password the user entered".to_string()
+    //Get Projects
+    let decodedProjects: DecodeResult<T> = json::decode(&bodyText);
+
+    decodedProjects
 }
