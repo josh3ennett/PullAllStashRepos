@@ -6,8 +6,11 @@ use docopt::Docopt;
 use hyper::Client;
 use hyper::client::Request;
 use hyper::Url;
+use hyper::header::{Headers, HeaderFormat, Header, Basic, Authorization};
 use rustc_serialize::json;
+use rustc_serialize::base64::{ToBase64, MIME};
 use std::io::Read;
+
 
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct HrefStruct{
@@ -49,11 +52,12 @@ pub struct ProjectsStruct  {
 struct Args {
     arg_url: String,
     arg_username: String,
+    arg_password: String,
     arg_outdir: String,
     flag_verbos: bool
 }
 static USAGE: &'static str = "
-Usage: PullAllStashRepos [Options] <url> <outdir> <username>
+Usage: PullAllStashRepos [Options] <url> <outdir> <username> [<password>]
 
 Options:
     -v, --verbos  show everything.
@@ -68,17 +72,37 @@ fn main() {
     println!("{:?}", args);
 
     let mut client = Client::new();
-    let mut urlStr = args.arg_url.to_string();
-    urlStr = urlStr + "/rest/api/1.0/projects/";
+    let mut headers = Headers::new();
 
-    let url = Url::parse(&*urlStr).unwrap();
+    let userName = args.arg_username;
+    let password = args.arg_password;
+    let outputDirectory = args.arg_outdir;
+
+    //Authorization
+    let authHeader = Authorization::<Basic> { // TODO figure out how to make this work.
+        username: userName,
+        password: password
+    };
+
+    headers.set(authHeader);
+
+    let mut projectsUrl = args.arg_url.to_string() + "/rest/api/1.0/projects/";
+    let url = Url::parse(&projectsUrl).unwrap();
 
     // TODO use basic auth
-    let mut res = client.get(url).send().unwrap();
+    let mut res = client
+        .get(url)
+        .headers(headers)
+        .send()
+        .unwrap();
 
     let mut bodyText = String::new();
 
     &res.read_to_string(&mut bodyText);
 
     println!("{:?}", bodyText);
+}
+
+fn promptForPassword() -> String {
+
 }
