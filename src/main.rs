@@ -38,9 +38,7 @@ pub struct ProjectInfoStruct  {
     name: String,
     description: String,
     public: bool,
-    //type: String,
     link: LinkStruct,
-    //links: RepoLinksStruct
 }
 
 #[derive(RustcDecodable, Debug)]
@@ -52,7 +50,6 @@ pub struct RepoStruct {
     state: String,
     statusMessage: String,
     forkable: bool,
-    //project: Vec<ProjectInfoStruct>,
     public: bool,
     link: LinkStruct,
     cloneUrl: String,
@@ -108,21 +105,12 @@ fn main() {
                 println!("Cloning {:?} to {}", cloneUrl, &outputDirectory);
 
                 //TODO try to get git2-rc building on windows so we don't have to shell out
-
                 let output = Command::new("git")
                     .arg("clone")
                     .arg(cloneUrl)
-                    //.arg(format!("clone {} {}", cloneUrl, &outputDirectory))
                     .arg("--depth=1")
-                    //.arg("-b 1")
-                    //.arg(format!("clone {} {}", cloneUrl, &outputDirectory))
                     .current_dir(&outputDirectory)
                     .spawn();
-                    //.unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
-
-                //let outputMsg = output.stdout;
-
-                //println!("{:?}", outputMsg);
 
                 break;
             }
@@ -136,7 +124,6 @@ fn get_json_from_api<T: Decodable>(url: Url, userName: String, password: String)
     let mut client = Client::new();
     let mut headers = Headers::new();
 
-    //Authorization
     let authHeader: Authorization<Basic> = Authorization(Basic{
         username: userName,
         password: Some(password)
@@ -154,9 +141,6 @@ fn get_json_from_api<T: Decodable>(url: Url, userName: String, password: String)
 
     &res.read_to_string(&mut bodyText);
 
-    //println!("{:?}", &bodyText);
-
-    //Get Projects
     let decodedProjects: DecodeResult<T> = json::decode(&bodyText);
 
     decodedProjects
