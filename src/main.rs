@@ -110,19 +110,19 @@ fn main() {
                 //TODO try to get git2-rc building on windows so we don't have to shell out
 
                 let output = Command::new("git")
-                    .arg("init")
-                    //.arg("clone")
-                    //.arg(cloneUrl)
+                    .arg("clone")
+                    .arg(cloneUrl)
                     //.arg(format!("clone {} {}", cloneUrl, &outputDirectory))
-                    //.arg("--depth=1")
+                    .arg("--depth=1")
                     //.arg("-b 1")
                     //.arg(format!("clone {} {}", cloneUrl, &outputDirectory))
-                    .output()
-                    .unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
+                    .current_dir(&outputDirectory)
+                    .spawn();
+                    //.unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
 
-                let outputMsg = output.stdout;
+                //let outputMsg = output.stdout;
 
-                println!("{:?}", outputMsg);
+                //println!("{:?}", outputMsg);
 
                 break;
             }
