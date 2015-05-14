@@ -80,6 +80,7 @@ Options:
     -v, --verbos  show everything.
 ";
 
+// TODO Check to see if the repo exists, if it does do a pull instead of a clone!
 fn main() {
 
     let args: Args = Docopt::new(USAGE)
