@@ -11,6 +11,8 @@ use rustc_serialize::Decodable;
 use rustc_serialize::json;
 use rustc_serialize::json::{DecodeResult};
 use std::io::Read;
+use std::process::Command;
+use std::str;
 
 #[derive(RustcDecodable, Debug)]
 pub struct HrefStruct{
@@ -98,15 +100,30 @@ fn main() {
 
     let decodedRepos: DecodeResult<ResponseStruct> = get_json_from_api(urlProj.clone(), userName.clone(), password.clone());
 
-    println!("url {}", projectsUrl);
-    //println!("{:?}", decodedRepos);
-
-    //TODO loop through all repos
     for proj in decodedRepos.unwrap().values.iter() {
         for hrefStruct in proj.links.clone.iter() {
             if &hrefStruct.name == "ssh" {
                 let cloneUrl = &hrefStruct.href;
-                println!("{:?}", cloneUrl);
+
+                println!("Cloning {:?} to {}", cloneUrl, &outputDirectory);
+
+                //TODO try to get git2-rc building on windows so we don't have to shell out
+
+                let output = Command::new("git")
+                    .arg("init")
+                    //.arg("clone")
+                    //.arg(cloneUrl)
+                    //.arg(format!("clone {} {}", cloneUrl, &outputDirectory))
+                    //.arg("--depth=1")
+                    //.arg("-b 1")
+                    //.arg(format!("clone {} {}", cloneUrl, &outputDirectory))
+                    .output()
+                    .unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
+
+                let outputMsg = output.stdout;
+
+                println!("{:?}", outputMsg);
+
                 break;
             }
         }
