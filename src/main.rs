@@ -14,13 +14,14 @@ use std::io::Read;
 
 #[derive(RustcDecodable, Debug)]
 pub struct HrefStruct{
-    href: String
+    href: String,
+    name: String,
 }
 
-/*#[derive(RustcDecodable, Debug)]
-pub struct LinksStruct{
-    self: Vec<HrefStruct>
-}*/
+#[derive(RustcDecodable, Debug)]
+pub struct RepoLinksStruct{
+    clone: Vec<HrefStruct>
+}
 
 #[derive(RustcDecodable, Debug)]
 pub struct LinkStruct{
@@ -33,21 +34,38 @@ pub struct ProjectInfoStruct  {
     key: String,
     id: u32,
     name: String,
-    //description: String,
+    description: String,
     public: bool,
     //type: String,
     link: LinkStruct,
-    //links: LinksStruct
+    //links: RepoLinksStruct
 }
 
 #[derive(RustcDecodable, Debug)]
-pub struct ProjectsStruct  {
-    //size: u8,
-    //limit: u8,
-    isLastPage: bool,
-    values: Vec<ProjectInfoStruct>
+pub struct RepoStruct {
+    slug: String,
+    id: u32,
+    name: String,
+    scmId: String,
+    state: String,
+    statusMessage: String,
+    forkable: bool,
+    //project: Vec<ProjectInfoStruct>,
+    public: bool,
+    link: LinkStruct,
+    cloneUrl: String,
+    links:  RepoLinksStruct
 }
 
+#[derive(RustcDecodable, Debug)]
+pub struct ResponseStruct {
+    size: u16,
+    limit: u16,
+    isLastPage: bool,
+    values: Vec<RepoStruct>
+}
+
+// Command line arguments.
 #[derive(RustcDecodable, Debug)]
 struct Args {
     arg_url: String,
@@ -69,34 +87,31 @@ fn main() {
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
 
-    println!("{:?}", args);
-
     let userName: String = args.arg_username;
     let password: String = args.arg_password;
     let outputDirectory: String = args.arg_outdir;
 
     let baseUrl = args.arg_url.to_string() + "/rest/api/1.0";
 
-    let projectsUrl =  baseUrl.clone().to_string() + "/projects/";
+    let projectsUrl =  baseUrl.clone().to_string() + "/repos?limit=1000";
     let urlProj = Url::parse(&projectsUrl).unwrap();
 
-    let decodedProjects: DecodeResult<ProjectsStruct> = get_json_from_api(urlProj.clone(), userName.clone(), password.clone());
+    let decodedRepos: DecodeResult<ResponseStruct> = get_json_from_api(urlProj.clone(), userName.clone(), password.clone());
 
-    //TODO loop through projects, get repo, clone repo to outDir
-    for proj in decodedProjects.unwrap().values.iter() {
+    println!("url {}", projectsUrl);
+    //println!("{:?}", decodedRepos);
 
-        let projUrl = baseUrl.clone() + &proj.clone().link.url;
-        let url = Url::parse(&projUrl).unwrap();
+    //TODO loop through all repos
+    for proj in decodedRepos.unwrap().values.iter() {
+        for hrefStruct in proj.links.clone.iter() {
+            if &hrefStruct.name == "ssh" {
+                let cloneUrl = &hrefStruct.href;
+                println!("{:?}", cloneUrl);
+                break;
+            }
+        }
 
-        let decodedProj: DecodeResult<ProjectsStruct> = get_json_from_api(url, userName.clone(), password.clone());
-
-        //TOOD output raw text? println!("{:?}", &decodedProj);
-
-        println!("{:?}", &decodedProj);
     }
-
-    //println!("{:?}", &bodyText);
-    //println!("{:?}", &decodedProjects);
 }
 
 fn get_json_from_api<T: Decodable>(url: Url, userName: String, password: String) -> DecodeResult<T> {
