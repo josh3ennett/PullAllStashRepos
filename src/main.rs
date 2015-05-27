@@ -73,6 +73,7 @@ struct Args {
     arg_outdir: String,
     flag_verbos: bool
 }
+
 static USAGE: &'static str = "
 Usage: PullAllStashRepos [Options] <url> <outdir> <username> <password>
 
@@ -80,32 +81,53 @@ Options:
     -v, --verbos  show everything.
 ";
 
+fn is_already_cloned (repoName: &String) -> bool {
+	false
+}
+
+fn delete_folder_contents ( path: &String ) {
+    //fs::remove_file("a.txt");
+}
+
+fn get_arguments () -> (String, String, String, String){
+
+    let args: Args = Docopt::new(USAGE)
+    .and_then(|d| d.decode())
+    .unwrap_or_else(|e| e.exit());
+
+    let user_name: String = args.arg_username;
+    let password: String = args.arg_password;
+    let output_directory: String = args.arg_outdir;
+
+    let base_url = args.arg_url.to_string() + "/rest/api/1.0";
+
+    return (user_name, password, output_directory, base_url)
+}
+
 // TODO Check to see if the repo exists, if it does do a pull instead of a clone!
 fn main() {
 
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
+    let (userName, password, outputDirectory, baseUrl) = get_arguments();
 
-    let userName: String = args.arg_username;
-    let password: String = args.arg_password;
-    let outputDirectory: String = args.arg_outdir;
+    //println!("Got Arguments userName:{0}, password:{1}, outputDirectory: {2}, baseUrl: {3}", &userName, &password, &outputDirectory, &baseUrl);
 
-    let baseUrl = args.arg_url.to_string() + "/rest/api/1.0";
-
-    let projectsUrl =  baseUrl.clone().to_string() + "/repos?limit=1000";
+    let projectsUrl =  baseUrl.clone().to_string() + "/repos";
     let urlProj = Url::parse(&projectsUrl).unwrap();
 
-    let decodedRepos: DecodeResult<ResponseStruct> = get_json_from_api(urlProj.clone(), userName.clone(), password.clone());
+    let decodedRepos: DecodeResult<ResponseStruct> = make_api_request(urlProj.clone(), userName.clone(), password.clone());
 
-    for proj in decodedRepos.unwrap().values.iter() {
-        for hrefStruct in proj.links.clone.iter() {
+    for repo in decodedRepos.unwrap().values.iter() {
+        for hrefStruct in repo.links.clone.iter() {
             if &hrefStruct.name == "ssh" {
                 let cloneUrl = &hrefStruct.href;
 
                 println!("Cloning {:?} to {}", cloneUrl, &outputDirectory);
 
-                //TODO try to get git2-rc building on windows so we don't have to shell out
+				let isRepoAlreadyClonedHere: bool = is_already_cloned(&repo.name);
+
+				let gitCommand = if isRepoAlreadyClonedHere { "pull" } else { "clone" };
+
+				//TODO try to get git2-rc building on windows so we don't have to shell out
                 let output = Command::new("git")
                     .arg("clone")
                     .arg(cloneUrl)
@@ -116,11 +138,12 @@ fn main() {
                 break;
             }
         }
-
     }
 }
 
-fn get_json_from_api<T: Decodable>(url: Url, userName: String, password: String) -> DecodeResult<T> {
+fn make_api_request<T: Decodable>(url: Url, userName: String, password: String) -> DecodeResult<T> {
+
+    println!("Making api request to {}", url);
 
     let mut client = Client::new();
     let mut headers = Headers::new();

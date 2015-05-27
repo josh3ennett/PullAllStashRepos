@@ -4,7 +4,7 @@
 
 A Command line tool to pull down all repositories from stash. 
 
-##Windows Development Environment Setup
+## Windows Development Environment Setup
 
 1. Install OpenSSL
 2. Add environment variables for the following:
@@ -12,6 +12,10 @@ A Command line tool to pull down all repositories from stash.
      + OPENSSL_INCLUDE_DIR = *OpenSSL-Path*/include  
      + OPENSSL_LIB_DIR = *OpenSSL-Path*
 
-##Quick Links
+## Quick Links
 
 + [Stash Command Line Rest](https://developer.atlassian.com/stash/docs/latest/how-tos/command-line-rest.html)
+
+## Notes
+
++ Tested and build using Rust stable 1.0.0
