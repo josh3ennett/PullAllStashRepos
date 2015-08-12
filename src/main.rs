@@ -70,24 +70,18 @@ struct Args {
     arg_username: String,
     arg_password: String,
     arg_outdir: String,
+    arg_branch: String,
     flag_verbos: bool
 }
 
 static USAGE: &'static str = "
-Usage: PullAllStashRepos [Options] <url> <outdir> <username> <password>
+Usage: PullAllStashRepos [Options] <url> <outdir> <username> <password> <branch>
 
 Options:
     -v, --verbos  show everything.
 ";
 
-fn is_already_cloned (output_directory: &str, repo_name: &str) -> bool {
-	//let path_str = output_directory.to_string();
-	//let metadata = try!(fs::metadata(&path_str));
-
-    false
-}
-
-fn get_arguments () -> (String, String, String, String){
+fn get_arguments () -> (String, String, String, String, String){
 
     let args: Args = Docopt::new(USAGE)
     .and_then(|d| d.decode())
@@ -96,17 +90,17 @@ fn get_arguments () -> (String, String, String, String){
     let user_name: String = args.arg_username;
     let password: String = args.arg_password;
     let output_directory: String = args.arg_outdir;
-
     let base_url = args.arg_url.to_string() + "/rest/api/1.0";
+    let branch = args.arg_branch.to_string();
 
-    return (user_name, password, output_directory, base_url)
+    return (user_name, password, output_directory, base_url, branch)
 }
 
 fn main() {
 
-    let (user_name, password, output_directory, base_url) = get_arguments();
+    let (user_name, password, output_directory, base_url, branch) = get_arguments();
 
-    let projects_url =  base_url.clone().to_string() + "/repos";
+    let projects_url =  base_url.clone().to_string() + "/repos?limit=200";
     let url_proj = Url::parse(&projects_url).unwrap();
 
     let decoded_repos: DecodeResult<ResponseStruct> = make_api_request(url_proj.clone(), user_name.clone(), password.clone());
@@ -118,14 +112,14 @@ fn main() {
 
                 println!("Cloning {:?} to {}", clone_url, &output_directory);
 
-				let is_repo_already_cloned_here: bool = is_already_cloned(&output_directory, &repo.name);
-
-				let git_command = if is_repo_already_cloned_here { "pull" } else { "clone" };
+				let git_command =  "clone" ;
 
 				//TODO try to get git2-rc building on windows so we don't have to shell out
                 let output = Command::new("git")
                     .arg(git_command)
                     .arg(clone_url)
+                    .arg(format!("-b {}" , &branch))
+                    .arg("--single-branch")
                     .arg("--depth=1")
                     .current_dir(&output_directory)
                     .output()
