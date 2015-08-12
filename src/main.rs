@@ -117,10 +117,11 @@ fn main() {
 				//TODO try to get git2-rc building on windows so we don't have to shell out
                 let output = Command::new("git")
                     .arg(git_command)
-                    .arg(clone_url)
-                    .arg(format!("-b {}" , &branch))
+                    .arg("-b")
+                    .arg(&branch)
                     .arg("--single-branch")
                     .arg("--depth=1")
+                    .arg(clone_url)
                     .current_dir(&output_directory)
                     .output()
                     .unwrap_or_else( |e| {
