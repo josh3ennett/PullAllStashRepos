@@ -4,15 +4,14 @@ extern crate rustc_serialize;
 
 use docopt::Docopt;
 use hyper::Client;
-use hyper::client::Request;
 use hyper::Url;
-use hyper::header::{Headers, HeaderFormat, Header, Basic, Authorization};
+use hyper::header::{Headers, Basic, Authorization};
 use rustc_serialize::Decodable;
 use rustc_serialize::json;
 use rustc_serialize::json::{DecodeResult};
+use std::fs;
 use std::io::Read;
 use std::process::Command;
-use std::str;
 
 #[derive(RustcDecodable, Debug)]
 pub struct HrefStruct{
@@ -81,12 +80,11 @@ Options:
     -v, --verbos  show everything.
 ";
 
-fn is_already_cloned (repoName: &String) -> bool {
-	false
-}
+fn is_already_cloned (output_directory: &str, repo_name: &str) -> bool {
+	//let path_str = output_directory.to_string();
+	//let metadata = try!(fs::metadata(&path_str));
 
-fn delete_folder_contents ( path: &String ) {
-    //fs::remove_file("a.txt");
+    false
 }
 
 fn get_arguments () -> (String, String, String, String){
@@ -104,36 +102,40 @@ fn get_arguments () -> (String, String, String, String){
     return (user_name, password, output_directory, base_url)
 }
 
-// TODO Check to see if the repo exists, if it does do a pull instead of a clone!
 fn main() {
 
-    let (userName, password, outputDirectory, baseUrl) = get_arguments();
+    let (user_name, password, output_directory, base_url) = get_arguments();
 
-    //println!("Got Arguments userName:{0}, password:{1}, outputDirectory: {2}, baseUrl: {3}", &userName, &password, &outputDirectory, &baseUrl);
+    let projects_url =  base_url.clone().to_string() + "/repos";
+    let url_proj = Url::parse(&projects_url).unwrap();
 
-    let projectsUrl =  baseUrl.clone().to_string() + "/repos";
-    let urlProj = Url::parse(&projectsUrl).unwrap();
+    let decoded_repos: DecodeResult<ResponseStruct> = make_api_request(url_proj.clone(), user_name.clone(), password.clone());
 
-    let decodedRepos: DecodeResult<ResponseStruct> = make_api_request(urlProj.clone(), userName.clone(), password.clone());
+    for repo in decoded_repos.unwrap().values.iter() {
+        for href_struct in repo.links.clone.iter() {
+            if &href_struct.name == "ssh" {
+                let clone_url = &href_struct.href;
 
-    for repo in decodedRepos.unwrap().values.iter() {
-        for hrefStruct in repo.links.clone.iter() {
-            if &hrefStruct.name == "ssh" {
-                let cloneUrl = &hrefStruct.href;
+                println!("Cloning {:?} to {}", clone_url, &output_directory);
 
-                println!("Cloning {:?} to {}", cloneUrl, &outputDirectory);
+				let is_repo_already_cloned_here: bool = is_already_cloned(&output_directory, &repo.name);
 
-				let isRepoAlreadyClonedHere: bool = is_already_cloned(&repo.name);
-
-				let gitCommand = if isRepoAlreadyClonedHere { "pull" } else { "clone" };
+				let git_command = if is_repo_already_cloned_here { "pull" } else { "clone" };
 
 				//TODO try to get git2-rc building on windows so we don't have to shell out
                 let output = Command::new("git")
-                    .arg("clone")
-                    .arg(cloneUrl)
+                    .arg(git_command)
+                    .arg(clone_url)
                     .arg("--depth=1")
-                    .current_dir(&outputDirectory)
-                    .spawn();
+                    .current_dir(&output_directory)
+                    .output()
+                    .unwrap_or_else( |e| {
+                        panic!("Failed to execute process: {}", e)
+                    });
+
+                println!("status: {}", output.status);
+                println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 
                 break;
             }
@@ -141,19 +143,19 @@ fn main() {
     }
 }
 
-fn make_api_request<T: Decodable>(url: Url, userName: String, password: String) -> DecodeResult<T> {
+fn make_api_request<T: Decodable>(url: Url, user_name: String, password: String) -> DecodeResult<T> {
 
     println!("Making api request to {}", url);
 
-    let mut client = Client::new();
+    let client = Client::new();
     let mut headers = Headers::new();
 
-    let authHeader: Authorization<Basic> = Authorization(Basic{
-        username: userName,
+    let auth_header: Authorization<Basic> = Authorization(Basic{
+        username: user_name,
         password: Some(password)
     });
 
-    headers.set(authHeader);
+    headers.set(auth_header);
 
     let mut res = client
         .get(url)
@@ -161,11 +163,11 @@ fn make_api_request<T: Decodable>(url: Url, userName: String, password: String) 
         .send()
         .unwrap();
 
-    let mut bodyText = String::new();
+    let mut body_text = String::new();
 
-    &res.read_to_string(&mut bodyText);
+    &res.read_to_string(&mut body_text);
+    println!("{}", &body_text);
+    let decoded_projects: DecodeResult<T> = json::decode(&body_text);
 
-    let decodedProjects: DecodeResult<T> = json::decode(&bodyText);
-
-    decodedProjects
+    decoded_projects
 }
